@@ -3,31 +3,13 @@ import re
 import time
 from datetime import datetime, timezone, timedelta
 import feedparser
-from whatsapp_api_client_python import API
-
-# ==============================================================================
-# 📝 CUSTOM CLOSING TEXT (2-Line Paragraph at the end)
-# ==============================================================================
-CUSTOM_FOOTER_TEXT = "\n\nBrought to you by my bot.\nStay informed and have a great week!"
-
-# ==============================================================================
-# CONFIGURATION & ENVIRONMENT VARIABLES
-# ==============================================================================
-INSTANCE_ID = os.environ.get("GREEN_API_INSTANCE_ID")
-API_TOKEN = os.environ.get("GREEN_API_TOKEN")
-TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
-import os
-import re
-import time
-from datetime import datetime, timezone, timedelta
-import feedparser
 import requests
 from whatsapp_api_client_python import API
 
 # ==============================================================================
 # 📝 CUSTOM CLOSING TEXT (2-Line Paragraph at the end)
 # ==============================================================================
-CUSTOM_FOOTER_TEXT = "\n\n*Source:* CNN, BBC, etc.\n*Brought by:* RAC-FUTO Ediorial Team"
+CUSTOM_FOOTER_TEXT = "\n\nBrought to you by my bot.\nStay informed and have a great week!"
 
 # ==============================================================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
@@ -48,7 +30,7 @@ RSS_FEEDS = [
 ]
 
 EXCLUDED_SPORTS = ["basketball", "nba", "tennis", "golf", "cricket", "nfl", "boxing", "ufc"]
-FOOTBALL_KEYWORDS = ["football", "fifa", "world cup",  "international football", "soccer"]
+FOOTBALL_KEYWORDS = ["football", "fifa", "world cup", "champions league", "premier league", "soccer"]
 
 # ==============================================================================
 # FILTERING & RELEVANCE ENGINE
