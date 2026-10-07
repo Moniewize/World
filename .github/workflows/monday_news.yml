@@ -2,7 +2,7 @@ name: Monday News WhatsApp Bot
 
 on:
   schedule:
-    - cron: '30 11 * * *'
+    - cron: '35 23 * * *'
   workflow_dispatch:
 
 jobs:
