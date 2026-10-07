@@ -1,15 +1,14 @@
 import os
-import re
 import time
 from datetime import datetime, timezone, timedelta
+from urllib.parse import urlparse, urlunparse
 import feedparser
-import requests
 from whatsapp_api_client_python import API
 
 # ==============================================================================
 # 📝 CUSTOM CLOSING TEXT (2-Line Paragraph at the end)
 # ==============================================================================
-CUSTOM_FOOTER_TEXT = "\n\nBrought to you by my bot.\nStay informed and have a great week!"
+CUSTOM_FOOTER_TEXT = "\n\n*Source:* BBC, DW\n*Brought by*: RAC-FUTO Editorial Team"
 
 # ==============================================================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
@@ -17,24 +16,25 @@ CUSTOM_FOOTER_TEXT = "\n\nBrought to you by my bot.\nStay informed and have a gr
 INSTANCE_ID = os.environ.get("GREEN_API_INSTANCE_ID")
 API_TOKEN = os.environ.get("GREEN_API_TOKEN")
 TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
-IMAGE_URL = os.environ.get("IMAGE_URL", "") 
 
-# OFFICIAL & REPUTABLE INTERNATIONAL BROADCASTERS / AGENCIES
+# STRICTLY OFFICIAL BROADCASTERS ONLY
 RSS_FEEDS = [
-    "http://feeds.bbci.co.uk/news/world/rss.xml",             # BBC News
-    "http://rss.cnn.com/rss/edition_world.rss",              # CNN
-    "https://www.aljazeera.com/xml/rss/all.xml",             # Al Jazeera
-    "https://www.npr.org/rss/rss.php?id=1004",               # NPR World
-    "https://rss.dw.com/rdf/rss-en-world",                   # Deutsche Welle (DW)
-    "https://www.rssfeedurl.com/reuters/worldNews"          # Reuters World
+    "http://feeds.bbci.co.uk/news/world/rss.xml",      # BBC News World
+    "https://rss.dw.com/rdf/rss-en-world",            # Deutsche Welle World
+    "http://rss.cnn.com/rss/edition_world.rss"        # CNN World
 ]
 
 EXCLUDED_SPORTS = ["basketball", "nba", "tennis", "golf", "cricket", "nfl", "boxing", "ufc"]
 FOOTBALL_KEYWORDS = ["football", "fifa", "world cup", "champions league", "premier league", "soccer"]
 
 # ==============================================================================
-# FILTERING & RELEVANCE ENGINE
+# HELPER FUNCTIONS
 # ==============================================================================
+def clean_link(url):
+    """Strips query parameters and tracking paths to leave short, clean links."""
+    parsed = urlparse(url)
+    return urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
+
 def is_relevant(title, summary):
     """Filters out non-football sports."""
     text = f"{title} {summary}".lower()
@@ -45,34 +45,48 @@ def is_relevant(title, summary):
         return any(fb in text for fb in FOOTBALL_KEYWORDS)
     return True
 
+# ==============================================================================
+# FILTERING & RELEVANCE ENGINE
+# ==============================================================================
 def get_headlines():
     articles = []
     seen = set()
     now = datetime.now(timezone.utc)
     seven_days_ago = now - timedelta(days=7)
 
+    # Set custom User-Agent header so CNN and DW do not block automated requests
+    request_headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+
     for feed in RSS_FEEDS:
-        data = feedparser.parse(feed)
+        data = feedparser.parse(feed, request_headers=request_headers)
         for entry in data.entries:
             title = entry.get("title", "").strip()
-            link = entry.get("link", "").strip()
+            raw_link = entry.get("link", "").strip()
             summary = entry.get("summary", "").strip()
 
             if not title or title in seen:
                 continue
 
-            # Parse publish date safely
-            published_parsed = entry.get("published_parsed")
-            if published_parsed:
-                pub_date = datetime.fromtimestamp(time.mktime(published_parsed), tz=timezone.utc)
-            else:
-                pub_date = now
+            # Ensure link comes strictly from bbc, dw, or cnn domains
+            parsed_domain = urlparse(raw_link).netloc.lower()
+            if not any(domain in parsed_domain for domain in ["bbc.com", "bbc.co.uk", "dw.com", "cnn.com"]):
+                continue
 
-            # THRESHOLD DISQUALIFICATION: Discard if older than 7 days
-            if pub_date < seven_days_ago:
+            # Strict publication date handling: Discard entries missing valid date
+            published_parsed = entry.get("published_parsed")
+            if not published_parsed:
+                continue
+
+            pub_date = datetime.fromtimestamp(time.mktime(published_parsed), tz=timezone.utc)
+
+            # Strict 7-day recency threshold
+            if pub_date < seven_days_ago or pub_date > now:
                 continue
 
             seen.add(title)
+            link = clean_link(raw_link)
             relevant = is_relevant(title, summary)
 
             articles.append({
@@ -85,10 +99,10 @@ def get_headlines():
     if not articles:
         return []
 
-    # WORKFLOW PRIORITY SORTING ENGINE:
-    # 1: Relevant & Recent
-    # 2: Less Relevant & Recent
-    # 3: Relevant & Older (within 7-day window)
+    # PRIORITY PIPELINE:
+    # Rank 1: Relevant & Recent
+    # Rank 2: Less Relevant & Recent
+    # Rank 3: Relevant & Older (within 7-day window)
     all_timestamps = [a["pub_date"].timestamp() for a in articles]
     mid_point = sum(all_timestamps) / len(all_timestamps)
 
@@ -103,7 +117,6 @@ def get_headlines():
         else:
             rank = 3
 
-        # Primary sort: rank (1 to 3), Secondary sort: newest timestamp first
         return (rank, -article["pub_date"].timestamp())
 
     articles.sort(key=priority_score)
@@ -116,7 +129,7 @@ def get_headlines():
 def send_whatsapp():
     articles = get_headlines()
     if not articles:
-        print("No news articles found within the 7-day window.")
+        print("No articles found meeting the recency and source criteria.")
         return
 
     message_lines = [
@@ -131,25 +144,12 @@ def send_whatsapp():
     full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
 
     green_api = API.GreenAPI(INSTANCE_ID, API_TOKEN)
-
-    # 1. Send Header Image (if URL provided)
-    if IMAGE_URL and IMAGE_URL.strip():
-        print(f"Sending header image from: {IMAGE_URL.strip()}")
-        img_resp = green_api.sending.sendFileByUrl(
-            TARGET_CHAT_ID,
-            IMAGE_URL.strip(),
-            "headline_header.jpg",
-            "*Today's Biggest Headlines*"
-        )
-        print("Image Dispatch Status:", getattr(img_resp, 'data', img_resp))
-
-    # 2. Send main news text + 2-line custom footer as a single message
     response = green_api.sending.sendMessage(TARGET_CHAT_ID, full_message)
 
     if response and hasattr(response, 'data') and response.data:
         print("Message sent successfully! Message ID:", response.data.get("idMessage"))
     else:
-        print("Failed to dispatch text message. Check Green API credentials and TARGET_CHAT_ID format.")
+        print("Failed to send message. Verify Green API credentials and TARGET_CHAT_ID format.")
 
 if __name__ == "__main__":
     send_whatsapp()
