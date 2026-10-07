@@ -8,7 +8,7 @@ from whatsapp_api_client_python import API
 # ==============================================================================
 # 📝 CUSTOM CLOSING TEXT (2-Line Paragraph at the end)
 # ==============================================================================
-CUSTOM_FOOTER_TEXT = "\n\n *Source:* BBC, CNN \n*Brought by: RAC-FUTO Editorial Team"
+CUSTOM_FOOTER_TEXT = "\n\nBrought to you by my bot.\nStay informed and have a great week!"
 
 # ==============================================================================
 # CONFIGURATION & ENVIRONMENT VARIABLES
