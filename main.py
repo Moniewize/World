@@ -11,11 +11,9 @@ from whatsapp_api_client_python import API
 INSTANCE_ID = os.environ.get("GREEN_API_INSTANCE_ID")
 API_TOKEN = os.environ.get("GREEN_API_TOKEN")
 TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
-
-# Optional: Direct link to your hosted header image
 IMAGE_URL = os.environ.get("IMAGE_URL", "") 
 
-# Custom closing footer (Includes two-line paragraph spacing before text)
+# Custom footer with a 2-line paragraph space before it
 CUSTOM_FOOTER_TEXT = "\n\n\n📌 *Stay informed and have a great week ahead!*"
 
 # RSS Feeds
@@ -24,7 +22,7 @@ RSS_FEEDS = [
     "http://rss.cnn.com/rss/edition_world.rss"
 ]
 
-# Excluded generic sports vs whitelisted international football
+# Filtering rules
 EXCLUDED_SPORTS = ["basketball", "nba", "tennis", "golf", "cricket", "nfl", "boxing", "ufc"]
 FOOTBALL_KEYWORDS = ["football", "fifa", "world cup", "champions league", "premier league", "soccer"]
 
@@ -32,7 +30,7 @@ FOOTBALL_KEYWORDS = ["football", "fifa", "world cup", "champions league", "premi
 # 2. FILTERING & RELEVANCE ENGINE
 # ==========================================
 def is_relevant(title, summary):
-    """Filters out generic sports, preserving international football."""
+    """Filters out non-football sports."""
     text = f"{title} {summary}".lower()
     for sport in EXCLUDED_SPORTS:
         if sport in text:
@@ -57,14 +55,14 @@ def get_headlines():
             if not title or title in seen:
                 continue
 
-            # Parse publish date safely
+            # Parse publication date
             published_parsed = entry.get("published_parsed")
             if published_parsed:
                 pub_date = datetime.fromtimestamp(time.mktime(published_parsed), tz=timezone.utc)
             else:
                 pub_date = now
 
-            # Disqualify if older than 7 days
+            # Disqualify articles older than 7 days
             if pub_date < seven_days_ago:
                 continue
 
@@ -82,9 +80,9 @@ def get_headlines():
         return []
 
     # Priority ranking logic:
-    # Rank 1: Relevant & Most Recent
-    # Rank 2: Less Relevant & Most Recent
-    # Rank 3: Relevant & Older (within 7-day window)
+    # 1: Relevant & Recent
+    # 2: Less Relevant & Recent
+    # 3: Relevant & Older (within 7 days)
     all_timestamps = [a["pub_date"].timestamp() for a in articles]
     mid_point = sum(all_timestamps) / len(all_timestamps)
 
@@ -103,20 +101,20 @@ def get_headlines():
 
     articles.sort(key=priority_score)
 
-    # Return 12 if available, otherwise 10
+    # Scale to 12 if enough articles exist, else default to 10
     limit = 12 if len(articles) >= 12 else 10
     return articles[:limit]
 
 # ==========================================
-# 3. WHATSAPP DISPATCH
+# 3. WHATSAPP DISPATCH ENGINE
 # ==========================================
 def send_whatsapp():
     articles = get_headlines()
     if not articles:
-        print("No news updates found within the 7-day window.")
+        print("No articles found within the 7-day window.")
         return
 
-    # Construct formatted digest
+    # Construct the formatted message
     message_lines = [
         "*Today's Biggest Headlines*",
         "",
@@ -128,11 +126,12 @@ def send_whatsapp():
         message_lines.append(f"{index}. *{item['title']}*")
         message_lines.append(f"   {item['link']}\n")
 
+    # Attach footer with two-line paragraph spacing
     full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
 
     green_api = API.GreenAPI(INSTANCE_ID, API_TOKEN)
 
-    # Dispatch media or pure text based on IMAGE_URL availability
+    # Send Image + Text Caption together if IMAGE_URL secret exists
     if IMAGE_URL and IMAGE_URL.strip():
         response = green_api.sending.sendFileByUrl(
             TARGET_CHAT_ID,
@@ -141,12 +140,13 @@ def send_whatsapp():
             full_message
         )
     else:
+        # Fallback to pure text message if no IMAGE_URL secret is provided
         response = green_api.sending.sendMessage(TARGET_CHAT_ID, full_message)
 
     if response and hasattr(response, 'data') and response.data:
         print("Sent successfully! Message ID:", response.data.get("idMessage"))
     else:
-        print("Failed to dispatch message. Verify Green API credentials and TARGET_CHAT_ID format.")
-        
-    if __name__ == "__main__":
-        send_whatsapp()
+        print("Failed to send message. Verify Green API credentials and TARGET_CHAT_ID format.")
+
+if __name__ == "__main__":
+    send_whatsapp()
