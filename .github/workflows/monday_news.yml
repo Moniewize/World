@@ -2,7 +2,7 @@ name: Monday News WhatsApp Bot
 
 on:
   schedule:
-    - cron: '15 4 * * 1'  # Keep as a fallback
+    - cron: '15 5 * * 1'  # Keep as a fallback
   workflow_dispatch:        # Manual run button
   repository_dispatch:      # External trigger support
     types: [trigger-news-bot]
