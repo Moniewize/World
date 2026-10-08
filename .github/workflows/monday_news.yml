@@ -2,8 +2,10 @@ name: Monday News WhatsApp Bot
 
 on:
   schedule:
-    - cron: '35 23 * * *'
-  workflow_dispatch:
+    - cron: '15 4 * * 1'  # Keep as a fallback
+  workflow_dispatch:        # Manual run button
+  repository_dispatch:      # External trigger support
+    types: [trigger-news-bot]
 
 jobs:
   run-bot:
@@ -25,5 +27,4 @@ jobs:
           GREEN_API_INSTANCE_ID: ${{ secrets.GREEN_API_INSTANCE_ID }}
           GREEN_API_TOKEN: ${{ secrets.GREEN_API_TOKEN }}
           TARGET_CHAT_ID: ${{ secrets.TARGET_CHAT_ID }}
-          IMAGE_URL: ${{ secrets.IMAGE_URL }}
         run: python main.py
