@@ -7,19 +7,17 @@ import requests
 from whatsapp_api_client_python import API
 
 # ==============================================================================
-# 📝 CONFIGURATION & ASSETS
+# 📝 CUSTOM CLOSING TEXT
 # ==============================================================================
 CUSTOM_FOOTER_TEXT = "\n\n*Source:* BBC, DW, CNN\n*Brought by*: RAC-FUTO Editorial Team"
 
-# Path to the image file uploaded in your GitHub repository workspace
-IMAGE_PATH = "header.png"
-
-# Green API credentials (WhatsApp)
+# ==============================================================================
+# CONFIGURATION & ENVIRONMENT VARIABLES
+# ==============================================================================
 INSTANCE_ID = os.environ.get("GREEN_API_INSTANCE_ID")
 API_TOKEN = os.environ.get("GREEN_API_TOKEN")
 TARGET_CHAT_ID = os.environ.get("TARGET_CHAT_ID")
 
-# Telegram credentials
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
@@ -122,23 +120,17 @@ def get_headlines():
     return articles[:limit]
 
 # ==============================================================================
-# WHATSAPP DISPATCH ENGINE (WITH IMAGE SUPPORT)
+# WHATSAPP DISPATCH ENGINE (TEXT-ONLY)
 # ==============================================================================
 def send_whatsapp_briefing(message):
-    """Sends the briefing with the repository image via Green API."""
+    """Sends text briefing via Green API."""
     if not INSTANCE_ID or not API_TOKEN or not TARGET_CHAT_ID:
         print("⚠️ Skipping WhatsApp: Missing Green API environment variables.")
         return
 
     try:
         green_api = API.GreenAPI(INSTANCE_ID, API_TOKEN)
-        
-        if os.path.exists(IMAGE_PATH):
-            # Sends image with caption text using Green API SDK
-            response = green_api.sending.sendFileByUpload(TARGET_CHAT_ID, IMAGE_PATH, os.path.basename(IMAGE_PATH), message)
-        else:
-            # Fallback to text message if image file is missing
-            response = green_api.sending.sendMessage(TARGET_CHAT_ID, message)
+        response = green_api.sending.sendMessage(TARGET_CHAT_ID, message)
 
         if response and hasattr(response, 'data') and response.data:
             print("✅ WhatsApp briefing successfully delivered!")
@@ -148,37 +140,24 @@ def send_whatsapp_briefing(message):
         print(f"❌ WhatsApp dispatch failed: {e}")
 
 # ==============================================================================
-# TELEGRAM DISPATCH ENGINE (WITH IMAGE SUPPORT)
+# TELEGRAM DISPATCH ENGINE (TEXT-ONLY)
 # ==============================================================================
 def send_telegram_briefing(message):
-    """Sends the briefing with the repository image via Telegram Bot API."""
+    """Sends text briefing via Telegram Bot API."""
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
         print("⚠️ Skipping Telegram: Missing Telegram environment variables.")
         return
 
     try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendPhoto"
-        
-        if os.path.exists(IMAGE_PATH):
-            with open(IMAGE_PATH, "rb") as img_file:
-                files = {"photo": img_file}
-                payload = {
-                    "chat_id": TELEGRAM_CHAT_ID,
-                    "caption": message,
-                    "parse_mode": "Markdown"
-                }
-                response = requests.post(url, data=payload, files=files, timeout=30)
-        else:
-            # Fallback to text-only send if image is missing
-            text_url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-            payload = {
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": message,
-                "parse_mode": "Markdown",
-                "disable_web_page_preview": False
-            }
-            response = requests.post(text_url, json=payload, timeout=20)
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "Markdown",
+            "disable_web_page_preview": False
+        }
 
+        response = requests.post(url, json=payload, timeout=20)
         response.raise_for_status()
         print("✅ Telegram briefing successfully delivered!")
     except Exception as e:
@@ -198,7 +177,6 @@ if __name__ == "__main__":
         ]
 
         for index, item in enumerate(articles, start=1):
-            # Safe title formatting for group parsers
             safe_title = item['title'].replace('*', '').replace('_', '').replace('`', '')
             message_lines.append(f"{index}. *{safe_title}*")
             message_lines.append(f"   {item['link']}\n")
@@ -206,7 +184,5 @@ if __name__ == "__main__":
         full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
 
         print("🚀 Dispatching news briefings concurrently...")
-        
-        # Run both dispatches concurrently in the same pipeline execution
         send_whatsapp_briefing(full_message)
         send_telegram_briefing(full_message)
