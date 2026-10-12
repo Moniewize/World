@@ -1,7 +1,9 @@
 name: Daily News Automation
 
 on:
-  workflow_dispatch: # Allows manual triggers and external webhooks (like GitHub API / cron triggers)
+  repository_dispatch:
+    types: [trigger-news-bot]
+  workflow_dispatch: # Allows manual triggers and external webhooks
 
 jobs:
   run-script:
@@ -13,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-            python-version: '3.10'
+          python-version: '3.10'
 
       - name: Install dependencies
         run: |
