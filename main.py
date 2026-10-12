@@ -12,7 +12,7 @@ from whatsapp_api_client_python import API
 CUSTOM_FOOTER_TEXT = "\n\n*Source:* BBC, DW, CNN\n*Brought by*: RAC-FUTO Editorial Team"
 
 # Path to the image file uploaded in your GitHub repository workspace
-IMAGE_PATH = "banner.jpg"  # <-- Change this to match your exact uploaded filename (e.g., image.png)
+IMAGE_PATH = "header.png"
 
 # Green API credentials (WhatsApp)
 INSTANCE_ID = os.environ.get("GREEN_API_INSTANCE_ID")
