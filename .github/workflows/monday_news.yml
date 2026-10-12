@@ -24,7 +24,9 @@ jobs:
 
       - name: Run script
         env:
-          GREEN_API_INSTANCE_ID: ${{ secrets.GREEN_API_INSTANCE_ID }}
-          GREEN_API_TOKEN: ${{ secrets.GREEN_API_TOKEN }}
-          TARGET_CHAT_ID: ${{ secrets.TARGET_CHAT_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          # GREEN_API_INSTANCE_ID: ${{ secrets.GREEN_API_INSTANCE_ID }}
+          # GREEN_API_TOKEN: ${{ secrets.GREEN_API_TOKEN }}
+          # TARGET_CHAT_ID: ${{ secrets.TARGET_CHAT_ID }}
         run: python main.py
