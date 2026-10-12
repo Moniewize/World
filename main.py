@@ -126,30 +126,55 @@ def get_headlines():
 # ==============================================================================
 # WHATSAPP DISPATCH ENGINE
 # ==============================================================================
-def send_whatsapp():
-    articles = get_headlines()
-    if not articles:
-        print("No articles found meeting the recency and source criteria.")
-        return
+# def send_whatsapp():
+#     articles = get_headlines()
+#     if not articles:
+#         print("No articles found meeting the recency and source criteria.")
+#         return
 
-    message_lines = [
-        "Here are some of the news reports that you shouldn't miss this morning:",
-        ""
-    ]
+#     message_lines = [
+#         "Here are some of the news reports that you shouldn't miss this morning:",
+#         ""
+#     ]
 
-    for index, item in enumerate(articles, start=1):
-        message_lines.append(f"{index}. *{item['title']}*")
-        message_lines.append(f"   {item['link']}\n")
+#     for index, item in enumerate(articles, start=1):
+#         message_lines.append(f"{index}. *{item['title']}*")
+#         message_lines.append(f"   {item['link']}\n")
 
-    full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
+#     full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
 
-    green_api = API.GreenAPI(INSTANCE_ID, API_TOKEN)
-    response = green_api.sending.sendMessage(TARGET_CHAT_ID, full_message)
+#     green_api = API.GreenAPI(INSTANCE_ID, API_TOKEN)
+#     response = green_api.sending.sendMessage(TARGET_CHAT_ID, full_message)
 
-    if response and hasattr(response, 'data') and response.data:
-        print("Message sent successfully! Message ID:", response.data.get("idMessage"))
-    else:
-        print("Failed to send message. Verify Green API credentials and TARGET_CHAT_ID format.")
+#     if response and hasattr(response, 'data') and response.data:
+#         print("Message sent successfully! Message ID:", response.data.get("idMessage"))
+#     else:
+#         print("Failed to send message. Verify Green API credentials and TARGET_CHAT_ID format.")
+
+import os
+import requests
+
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+def send_telegram_briefing(message):
+    """Delivers daily news briefings via Telegram Bot API."""
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
+        raise ValueError("Missing TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID environment variables.")
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message,
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": False
+    }
+
+    response = requests.post(url, json=payload, timeout=20)
+    response.raise_for_status()
+    print("✅ Headline briefing successfully delivered to Telegram!")
+
+
 
 if __name__ == "__main__":
-    send_whatsapp()
+    send_telegram_briefing()
