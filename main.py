@@ -177,4 +177,23 @@ def send_telegram_briefing(message):
 
 
 if __name__ == "__main__":
-    send_telegram_briefing()
+    # 1. Fetch articles using your existing RSS pipeline
+    articles = get_headlines()
+    if not articles:
+        print("No articles found meeting the recency and source criteria.")
+    else:
+        # 2. Build the formatted message lines
+        message_lines = [
+            "Here are some of the news reports that you shouldn't miss this morning:",
+            ""
+        ]
+
+        for index, item in enumerate(articles, start=1):
+            message_lines.append(f"{index}. *{item['title']}*")
+            message_lines.append(f"   {item['link']}\n")
+
+        # 3. Combine everything with your custom footer
+        full_message = "\n".join(message_lines) + CUSTOM_FOOTER_TEXT
+
+        # 4. Dispatch the compiled message to your Telegram channel
+        send_telegram_briefing(full_message)
